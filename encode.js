@@ -36,9 +36,9 @@ var vaudio_celt = ffi.Library("vaudio_celt_client", {
     [
       CELTEncoderPtr, // st
       ref.refType(ref.types.short), // pcm
-      ref.refType(ref.types.short), // optional_synthesis
+      "int", // frame_size
       ref.refType(ref.types.uchar), // compressed
-      ref.refType(ref.types.int), // nbCompressedBytes
+      "int", // maxCompressedBytes
     ],
   ],
 });
@@ -65,11 +65,13 @@ console.log(`Reading ${infile}...`);
 var infileBuffer = fs.readFileSync(infile)
 var wav = new WaveFile()
 wav.fromBuffer(infileBuffer)
+console.log(wav.chunkSize)
+console.log(wav.data.samples)
 console.log(wav.container)
 
-var buffer = wav.getSamples(true, Int16Array)
-var opt_synth = new Int16Array()
-var output = Buffer.alloc((buffer.length / 64) * FRAME_SIZE * 2);
+var buffer = wav.data.samples 
+var output = Buffer.alloc(((buffer.length / FRAME_SIZE) * 64) / 2);
+var outputLength = Buffer.alloc(output.length)
 
 var read = 0;
 var written = 0;
@@ -77,16 +79,21 @@ var written = 0;
 while (read < buffer.length) {
   var ret = vaudio_celt.celt_encode(
     encoderPtr,
-    buffer,
-    opt_synth,
-    output,
-    output.length,
+    buffer.subarray(read),
+    FRAME_SIZE,
+    output.subarray(written),
+    64,
   );
+
+  console.log(output.subarray(written))
 
   if (ret < 0) {
     console.error(`celt_encode failed (${ret})`);
     continue;
   }
+
+  read += FRAME_SIZE * 2;
+  written += 64;
 
   process.stdout.write(`\rEncoded ${read}/${buffer.length}... `);
 }

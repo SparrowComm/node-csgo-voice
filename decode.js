@@ -100,4 +100,6 @@ wav.fromScratch(
 );
 fs.writeFileSync(outfile, wav.toBuffer());
 
+console.log("Buffer: " + buffer.length)
+console.log("Output: " + output.length)
 console.log(`Done!`);
